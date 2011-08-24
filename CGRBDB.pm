@@ -1,27 +1,23 @@
 package CGRBDB;
-# $Id: CGRBDB.pm,v 3.18 2008/07/10 23:18:56 givans Exp $
+# $Id: CGRBDB.pm,v 3.19 2011/07/27 21:35:16 givans Exp $
 
 use strict;
+use lib '/home/sgivan/lib/perl5';
 use vars qw/ @ISA /;
 use DBI qw(:sql_types);
 use Exporter;
-#use lib '/home/cgrb/givans/dev/lib/perl5';
-#use _Initializable;
 @ISA = qw/ DBI /;
 
 my $debug = 0;
-my $HOST = 'pearson.science.oregonstate.local';
-#my $host = 'localhost';
-#my $host = 'gac.science.oregonstate.local';
+my $HOST = 'lewis2.rnet.missouri.edu';
+my $port = 53307;
 
 if ($debug) {
 #  $| = 1;
-#  open(LOG,">>/home/cgrb/givans/bin/logs/CGRBDB.log") or die "can't open CGRBDB.log: $!";
-  open(LOG,">/home/cgrb/givans/bin/logs/CGRBDB.log") or die "can't open CGRBDB.log: $!";
+  open(LOG,">/home/sgivan/log/CGRBDB.log") or die "can't open CGRBDB.log: $!";
   print LOG "\n\n", "+" x 50;
   print LOG "\nCGRBDB called: " . scalar(localtime()) . "\n\n";
 }
-
 
 1;
 
@@ -108,7 +104,8 @@ sub _dbConnect {
 	      );
 
   while ($tries <= 3) {
-    if ($dbh = DBI->connect("DBI:mysql:$dbase:$HOST",$user,$pass,\%attr)) {
+# DBI->connect("DBI:mysql:$dbase:$HOST;port=$port",$user,$pass,\%attr)) 
+    if ($dbh = DBI->connect("DBI:mysql:$dbase:$HOST;port=$port",$user,$pass,\%attr)) {
       $tries = 0;
       $self->dbh($dbh);
 	  printlog("connected to $dbase as $user") if ($debug);
