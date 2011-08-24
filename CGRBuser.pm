@@ -7,9 +7,6 @@ use strict;
 use Carp;
 use warnings;
 use Exporter;
-#use Class::Autouse;
-#Class::Autouse->autouse( 'Apache::Session::File' );
-#use lib '/home/cgrb/givans/dev/lib/perl5';
 #use lib '/home/cgrb/cgrblib/perl5/perl5.new';
 use CGRB::CGRBDB;
 use vars qw/ @ISA $AUTOLOAD /;
@@ -18,11 +15,12 @@ use vars qw/ @ISA $AUTOLOAD /;
 my $usertable = "jobUser";
 my $labtable = "jobUserLab";
 my $categorytable = "jobUserCategory";
+my $sessiondir = '/tmp/ircfweb/sessions';
 
 my $debug = 0;
 
 if ($debug) {
-  open(LOG, ">>/home/cgrb/givans/dev/bin/logs/CGRBuser.log") or die "can't open CGRBuser.log: $!";
+  open(LOG, ">>/tmp/CGRBuser.log") or die "can't open CGRBuser.log: $!";
   print LOG "\n\n";
   print LOG "+" x 50;
   print LOG "\nCGRBuser called: " . scalar(localtime) . "\n\n";
@@ -318,8 +316,6 @@ sub labExists {
   }
   return $rtn;
 }
-
-
 
 sub firstname {			### Accessor
   my $obj = shift;
@@ -625,7 +621,7 @@ sub _get_userName {
 
 sub logged_in {
   my $obj = shift;
-  my $r = shift;# expecting an Apache::Request object
+  my $r = shift;# new: expecting an Apache2::Request object
   my $status;
 
   if ($debug) {
@@ -713,14 +709,13 @@ sub logged_in_cgi {
 
 sub localchk {
   my $obj = shift;
-  my $r = shift;#expecting an Apache::Request object
+  my $r = shift;#new: expecting an Apache2::Request object
+    # not sure if this is fixed yet
   my $ip = $r->connection->remote_ip();
 
 #  if ($ip =~ /^128\.193\.\d{1,3}\.\d{1,3}/ || $ip =~ /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}/) {
-  if ($ip =~ /^128\.193\.\d{1,3}\.\d{1,3}/ || $ip =~ /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}/) {
+  if ($ip =~ /^128\.206\.\d{1,3}\.\d{1,3}/ || $ip =~ /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}/) {
     return 1;
-	} elsif ($ip =~ /^128\.223\.\d{1,3}\.\d{1,3}/) {## University of Oregon
-		return 1;
   } else {
     return 0;
   }
@@ -729,16 +724,16 @@ sub localchk {
 
 sub authenticate {
   my $obj = shift;
-  my $r = shift;# expecting an Apache::Request object
+  my $r = shift;# new: expecting an Apache2::Request object
   my $user = shift;
   my $password = shift;
   my $status;
 
   eval {
-    require Apache::Cookie;
+    require Apache2::Cookie;
   };
   if ($@) {
-    return "can't load Apache::Cookie: $@";
+    return "can't load Apache2::Cookie: $@";
   }
 
   if ($obj->chkPassword($user,$password)) {
@@ -754,13 +749,13 @@ sub authenticate {
        my $session = $obj->session();
        $session->{username} = $user;
 
-       my $cookie = Apache::Cookie->new($r,
+       my $cookie = Apache2::Cookie->new($r,
  				       -name	=>	'CGRBID',
 # 				       -value	=>	$user,
 					-value	=>	$session->{_session_id},
  				       -path	=>	'/',
  				      );
-       $cookie->bake;
+       $cookie->bake($r);
 #    }
 
     $status = 1;
@@ -793,8 +788,10 @@ sub _set_session {
   }
 
   tie %session, 'Apache::Session::File', undef, {
-						 Directory	=>	'/data/www/html/devnull',
-						 LockDirectory	=>	'/data/www/html/devnull',
+#						 Directory	=>	'/data/www/html/devnull',
+						 Directory	=>	$sessiondir,
+#						 LockDirectory	=>	'/data/www/html/devnull',
+						 LockDirectory	=>	$sessiondir,
 						};
 
   return \%session;
@@ -815,8 +812,10 @@ sub _get_session {
   }
 
   eval { tie %session, 'Apache::Session::File', $session_id, {
-							      Directory		=>	'/data/www/html/devnull',
-							      LockDirectory	=>	'/data/www/html/devnull',
+#							      Directory		=>	'/data/www/html/devnull',
+							      Directory		=>	$sessiondir,
+#							      LockDirectory	=>	'/data/www/html/devnull',
+							      LockDirectory	=>	$sessiondir,
 							     };
        };
 
@@ -832,10 +831,10 @@ sub get_session_id {
   my $r = shift;
   my $session_id;
 
-  return undef unless ($r && ref($r) eq 'Apache::Request');
+  return undef unless ($r && ref($r) eq 'Apache2::Request');
 
-  if ($r->header_in('Cookie')) {
-    if ($r->header_in('Cookie') =~ /CGRBID=(\w+)/) {
+  if ($r->headers_in->{Cookie}) {
+    if ($r->headers_in->{Cookie} =~ /CGRBID=(\w+)/) {
       $session_id = $1;
     }
   }
@@ -849,24 +848,25 @@ sub get_session_id {
 
 sub logout {
   my $obj = shift;
-  my $r = shift;# expecting an Apache::Request object
+  my $r = shift;# new: expecting an Apache::Request object
   my $status = 0;
  # return $status unless ($r);
 
 
   eval {
-    require Apache::Cookie;
+    require Apache2::Cookie;
     };
   if ($@) {
-    die "can't require Apache::Cookie";
+    die "can't require Apache2::Cookie";
   }
 
-  my %cookies = Apache::Cookie->fetch;
+  my %cookies = Apache2::Cookie->fetch($r);
+
   if (exists $cookies{CGRBID}) {
 #     $cookies{CGRBID}->value(undef);
      $cookies{CGRBID}->path('/');
     $cookies{CGRBID}->expires('-1h');
-    $cookies{CGRBID}->bake;
+    $cookies{CGRBID}->bake($r);
     $status = 1;
   }
 
