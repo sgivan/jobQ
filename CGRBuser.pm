@@ -15,15 +15,16 @@ use vars qw/ @ISA $AUTOLOAD /;
 my $usertable = "jobUser";
 my $labtable = "jobUserLab";
 my $categorytable = "jobUserCategory";
-my $sessiondir = '/tmp/ircfweb/sessions';
+my $sessiondir = '/home/sgivan/apache/dev/htdocs/devnull';
+#my $sessiondir = '/tmp';
 
-my $debug = 0;
+my $debug = 1;
 
 if ($debug) {
   open(LOG, ">>/tmp/CGRBuser.log") or die "can't open CGRBuser.log: $!";
   print LOG "\n\n";
   print LOG "+" x 50;
-  print LOG "\nCGRBuser called: " . scalar(localtime) . "\n\n";
+  print LOG "\nXXXCGRBuser called: " . scalar(localtime) . "\n\n";
 }
 
 
@@ -623,6 +624,7 @@ sub logged_in {
   my $obj = shift;
   my $r = shift;# new: expecting an Apache2::Request object
   my $status;
+    print LOG "determining whether user is logged in\n" if ($debug);
 
   if ($debug) {
     my ($p,$f,$l) = caller();
@@ -654,19 +656,21 @@ sub logged_in {
       my $session = $obj->session($session_id);
 
       my $login = $session->{username};
+      print LOG "session id is '$session_id'\nlogin is '$login'\n" if ($debug);
       if ($login && $obj->userExists($login)) {
-	$status = 1;
-	$obj->login($login);
+	    $status = 1;
+	    $obj->login($login);
       } else {
-	$status = 0;
+	    $status = 0;
       }
     } else {
+        print LOG "could not retrieve session ID\n" if ($debug);
       $status = 0;
     }
 #  } else {
 #    $status = 0;
 #  }
-	
+    print LOG "returning status = '$status'\n" if ($debug);	
   return $status;
 }
 
@@ -728,6 +732,8 @@ sub authenticate {
   my $user = shift;
   my $password = shift;
   my $status;
+    print LOG "authenticating '$user' with password '$password'\n" if ($debug);
+    print LOG "\$r isa '", ref($r), "'\n" if ($debug);
 
   eval {
     require Apache2::Cookie;
@@ -736,6 +742,7 @@ sub authenticate {
     return "can't load Apache2::Cookie: $@";
   }
 
+    print LOG "checking password...\n" if ($debug);
   if ($obj->chkPassword($user,$password)) {
 
 #     my %cookies = Apache::Cookie->fetch;
@@ -746,9 +753,12 @@ sub authenticate {
 #       $cookies{CGRBID}->bake;
 #     } else {
 
+        print LOG "password matched, setting session\n" if ($debug);
        my $session = $obj->session();
+        print LOG "\$session isa '", ref($session), "'\n" if ($debug);
        $session->{username} = $user;
 
+        print LOG "setting cookie in browser\n" if ($debug);
        my $cookie = Apache2::Cookie->new($r,
  				       -name	=>	'CGRBID',
 # 				       -value	=>	$user,
@@ -757,12 +767,12 @@ sub authenticate {
  				      );
        $cookie->bake($r);
 #    }
-
     $status = 1;
   } else {
     $status = 0;
   }
 
+  print LOG "returning status = '$status'" if ($debug);
   return $status;
 }
 
@@ -830,8 +840,12 @@ sub get_session_id {
   my $self = shift;
   my $r = shift;
   my $session_id;
-
-  return undef unless ($r && ref($r) eq 'Apache2::Request');
+    if ($debug) {
+        print LOG "get_session_id() called\n";
+        print LOG "\$r isa '", ref($r), "'\n";
+    }
+  return undef unless ($r && ref($r) eq 'Apache2::RequestRec');
+    print LOG "retrieving cookie ...\n" if ($debug);
 
   if ($r->headers_in->{Cookie}) {
     if ($r->headers_in->{Cookie} =~ /CGRBID=(\w+)/) {
