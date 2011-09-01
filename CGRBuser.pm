@@ -467,7 +467,7 @@ sub _useremail { ## This method isn't used ##
 sub usernum {			### Accessor
   my $obj = shift;
   my $username = shift;
-  printlog("CGRBuser::usernum called for '$username'") if ($debug);
+#  printlog("CGRBuser::usernum called for '$username'") if ($debug);
 
   $username ? $obj->_set_usernum($username) : $obj->_get_usernum();
 
@@ -707,7 +707,8 @@ sub logged_in_cgi {
     }
   }
 
-  return $status;
+#  return $status;
+    return $username;
 
 }
 
