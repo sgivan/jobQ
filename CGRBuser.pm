@@ -761,10 +761,11 @@ sub authenticate {
 
         print LOG "setting cookie in browser\n" if ($debug);
        my $cookie = Apache2::Cookie->new($r,
- 				       -name	=>	'CGRBID',
+                        -name	=>	'CGRBIDx',
 # 				       -value	=>	$user,
-					-value	=>	$session->{_session_id},
- 				       -path	=>	'/',
+                        -value	=>	$session->{_session_id},
+                        -path	=>	'/',
+                        -domain =>  '.missouri.edu',
  				      );
        $cookie->bake($r);
 #    }
