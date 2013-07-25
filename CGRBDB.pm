@@ -2,15 +2,16 @@ package CGRBDB;
 # $Id: CGRBDB.pm,v 3.19 2011/07/27 21:35:16 givans Exp $
 
 use strict;
-use lib '/home/sgivan/lib/perl5';
+#use lib '/home/sgivan/lib/perl5';
 use vars qw/ @ISA /;
 use DBI qw(:sql_types);
 use Exporter;
 @ISA = qw/ DBI /;
 
-my $debug = 0;
-my $HOST = 'lewis2.rnet.missouri.edu';
-my $port = 53307;
+my $debug = 1;
+#my $HOST = 'ircf-login-0-1.local';
+my $HOST = 'localhost';
+my $port = 3306;
 
 if ($debug) {
 #  $| = 1;
@@ -103,7 +104,7 @@ sub _dbConnect {
 	      RaiseError	=>	0,
 	      );
 
-  while ($tries <= 3) {
+  while ($tries < 1) {# this probably shouldn't be set to anything other than 1 unless there are connection problems
 # DBI->connect("DBI:mysql:$dbase:$HOST;port=$port",$user,$pass,\%attr)) 
     if ($dbh = DBI->connect("DBI:mysql:$dbase:$HOST;port=$port",$user,$pass,\%attr)) {
       $tries = 0;
@@ -115,7 +116,7 @@ sub _dbConnect {
 	printlog($DBI::errstr) if ($debug);
       ++ $tries;
 	  printlog("can't connect; sleeping 2 sec") if ($debug);
-      sleep(2);
+#      sleep(2);
       next;
     }
   }
