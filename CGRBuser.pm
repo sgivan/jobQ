@@ -15,13 +15,14 @@ use vars qw/ @ISA $AUTOLOAD /;
 my $usertable = "jobUser";
 my $labtable = "jobUserLab";
 my $categorytable = "jobUserCategory";
-my $sessiondir = '/home/sgivan/apache/dev/htdocs/devnull';
+#my $sessiondir = '/home/sgivan/apache/dev/htdocs/devnull';
+my $sessiondir = '/var/www/html/devnull';
 #my $sessiondir = '/tmp';
 
 my $debug = 1;
 
 if ($debug) {
-  open(LOG, ">>/tmp/CGRBuser.log") or die "can't open CGRBuser.log: $!";
+  open(LOG, ">>/home/sgivan/log/CGRBuser.log") or die "can't open CGRBuser.log: $!";
   print LOG "\n\n";
   print LOG "+" x 50;
   print LOG "\nXXXCGRBuser called: " . scalar(localtime) . "\n\n";
@@ -761,11 +762,12 @@ sub authenticate {
 
         print LOG "setting cookie in browser\n" if ($debug);
        my $cookie = Apache2::Cookie->new($r,
-                        -name	=>	'CGRBIDx',
+                        -name	=>	'CGRBID',
 # 				       -value	=>	$user,
                         -value	=>	$session->{_session_id},
                         -path	=>	'/',
-                        -domain =>  '.missouri.edu',
+                        #-domain =>  '.missouri.edu',
+                        -domain =>  'ircf.missouri.edu',
  				      );
        $cookie->bake($r);
 #    }
@@ -813,7 +815,7 @@ sub _get_session {
   my $self = shift;
   my $session_id = shift;
   my %session;
-  printlog("_get_session called") if ($debug);
+  printlog("_get_session called; session id = '$session_id'") if ($debug);
 
   eval {
     require Apache::Session::File;
