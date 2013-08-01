@@ -22,7 +22,7 @@ my $sessiondir = '/var/www/html/devnull';
 my $debug = 1;
 
 if ($debug) {
-  open(LOG, ">>/home/sgivan/log/CGRBuser.log") or die "can't open CGRBuser.log: $!";
+  open(LOG, ">/tmp/CGRBuser.log") or die "can't open CGRBuser.log: $!";
   print LOG "\n\n";
   print LOG "+" x 50;
   print LOG "\nXXXCGRBuser called: " . scalar(localtime) . "\n\n";
@@ -763,10 +763,8 @@ sub authenticate {
         print LOG "setting cookie in browser\n" if ($debug);
        my $cookie = Apache2::Cookie->new($r,
                         -name	=>	'CGRBID',
-# 				       -value	=>	$user,
                         -value	=>	$session->{_session_id},
                         -path	=>	'/',
-                        #-domain =>  '.missouri.edu',
                         -domain =>  'ircf.missouri.edu',
  				      );
        $cookie->bake($r);
@@ -865,30 +863,35 @@ sub get_session_id {
 }
 
 sub logout {
-  my $obj = shift;
-  my $r = shift;# new: expecting an Apache::Request object
-  my $status = 0;
- # return $status unless ($r);
+    my $obj = shift;
+    my $r = shift;# new: expecting an Apache::Request object
+    my $status = 0;
+    printlog("logout called") if ($debug);
+    # return $status unless ($r);
 
 
-  eval {
+    eval {
     require Apache2::Cookie;
     };
-  if ($@) {
+    if ($@) {
     die "can't require Apache2::Cookie";
-  }
+    }
 
-  my %cookies = Apache2::Cookie->fetch($r);
+    my %cookies = Apache2::Cookie->fetch($r);
 
-  if (exists $cookies{CGRBID}) {
-#     $cookies{CGRBID}->value(undef);
-     $cookies{CGRBID}->path('/');
-    $cookies{CGRBID}->expires('-1h');
-    $cookies{CGRBID}->bake($r);
-    $status = 1;
-  }
+    printlog("cookies retrieved. Now resetting expire setting to '-1h' for CGRBID.") if ($debug);
+    if (exists $cookies{CGRBID}) {
+        #     $cookies{CGRBID}->value(undef);
+        #     $cookies{CGRBID}->path('/');
+#        printlog("cookie currently expires: '" . $cookies{CGRBID}->expires() . "'") if ($debug);
+        $cookies{CGRBID}->expires('-1h');
+#        printlog("cookie now expires: '" . $cookies{CGRBID}->expires() . "'") if ($debug);
+        $cookies{CGRBID}->bake($r);
+        $status = 1;
+        printlog("set cookie to expire '-1h'") if ($debug);
+    }
 
-  return $status;
+    return $status;
 }
 
 sub logout_cgi {
