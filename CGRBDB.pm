@@ -8,7 +8,7 @@ use DBI qw(:sql_types);
 use Exporter;
 @ISA = qw/ DBI /;
 
-my $debug = 1;
+my $debug = 0;
 #my $HOST = 'ircf-login-0-1.local';
 my $HOST = 'localhost';
 my $port = 3306;
