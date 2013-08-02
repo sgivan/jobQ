@@ -764,8 +764,9 @@ sub authenticate {
        my $cookie = Apache2::Cookie->new($r,
                         -name	=>	'CGRBID',
                         -value	=>	$session->{_session_id},
-                        -path	=>	'/',
-                        -domain =>  'ircf.missouri.edu',
+                        -expires=> '+4hr',
+#                        -path	=>	'/genomes',
+#                        -domain =>  '.ircf.missouri.edu',
  				      );
        $cookie->bake($r);
 #    }
@@ -867,29 +868,53 @@ sub logout {
     my $r = shift;# new: expecting an Apache::Request object
     my $status = 0;
     printlog("logout called") if ($debug);
+    printlog("\$r isa '" . ref($r) . "'") if ($debug);
     # return $status unless ($r);
 
 
     eval {
-    require Apache2::Cookie;
+        require Apache2::Cookie;
     };
     if ($@) {
-    die "can't require Apache2::Cookie";
+     die "can't require Apache2::Cookie";
     }
 
-    my %cookies = Apache2::Cookie->fetch($r);
+    my $j = Apache2::Cookie::Jar->new($r);
+    my $c_in = $j->cookies("CGRBID");
 
-    printlog("cookies retrieved. Now resetting expire setting to '-1h' for CGRBID.") if ($debug);
-    if (exists $cookies{CGRBID}) {
-        #     $cookies{CGRBID}->value(undef);
-        #     $cookies{CGRBID}->path('/');
-#        printlog("cookie currently expires: '" . $cookies{CGRBID}->expires() . "'") if ($debug);
-        $cookies{CGRBID}->expires('-1h');
-#        printlog("cookie now expires: '" . $cookies{CGRBID}->expires() . "'") if ($debug);
-        $cookies{CGRBID}->bake($r);
-        $status = 1;
-        printlog("set cookie to expire '-1h'") if ($debug);
+#    if ($debug) {
+#        printlog("got a cookie from the cookie jar");
+#        printlog("\$c_in isa '". ref($c_in) . "'");
+#        printlog("path is '" . $c_in->path() . "'");
+#        printlog("cookie name: '" . $c_in->name() . "'");
+#        printlog("cookie value: '" . $c_in->value() . "'");
+#        printlog("as string: '" . $c_in->as_string() . "'");
+#        printlog("domain: '" . $c_in->domain() . "'");
+#        printlog("version: '" . $c_in->version() . "'");
+##        printlog("expires: '" . $c_in->expires() . "'");# expires is set-only
+#    }
+
+    if ($c_in && $c_in->isa('Apache2::Cookie')) {
+        $c_in->expires('-1h');
+        $c_in->bake($r);
     }
+
+#    my %cookies = Apache2::Cookie->fetch($r);
+#
+#    printlog("cookies retrieved. Now resetting expire setting to '-1h' for CGRBID.") if ($debug);
+#    if (exists $cookies{CGRBID}) {
+#        #     $cookies{CGRBID}->value(undef);
+#        #     $cookies{CGRBID}->path('/');
+#        printlog("cookie isa '" . ref($cookies{CGRBID}) . "'") if ($debug);
+#        #my $expires = $cookies{CGRBID}->expires();
+#        my $domain = $cookies{CGRBID}->domain();
+#        printlog("domain is '$domain'") if ($debug);
+#        $cookies{CGRBID}->expires('-1h');
+##        printlog("cookie now expires: '" . $cookies{CGRBID}->expires() . "'") if ($debug);
+#        $cookies{CGRBID}->bake($r);
+#        $status = 1;
+#        printlog("set cookie to expire '-1h'") if ($debug);
+#    }
 
     return $status;
 }
