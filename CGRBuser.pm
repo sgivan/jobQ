@@ -19,7 +19,7 @@ my $categorytable = "jobUserCategory";
 my $sessiondir = '/var/www/html/devnull';
 #my $sessiondir = '/tmp';
 
-my $debug = 1;
+my $debug = 0;
 
 if ($debug) {
   open(LOG, ">/tmp/CGRBuser.log") or die "can't open CGRBuser.log: $!";
