@@ -766,7 +766,8 @@ sub authenticate {
                         -value	=>	$session->{_session_id},
                         -expires=> '+4hr',
 #                        -path	=>	'/genomes',
-#                        -domain =>  '.ircf.missouri.edu',
+			-path	=>	'/',
+                        -domain =>  '.ircf.missouri.edu',
  				      );
        $cookie->bake($r);
 #    }
@@ -895,6 +896,8 @@ sub logout {
 #    }
 
     if ($c_in && $c_in->isa('Apache2::Cookie')) {
+	$c_in->path('/');
+	$c_in->domain('.ircf.missouri.edu');
         $c_in->expires('-1h');
         $c_in->bake($r);
     }
