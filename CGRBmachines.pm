@@ -17,33 +17,6 @@ my $debug = 0;
 #print "using CGRBmachines.pm\n" if ($debug);
 1;
 
-#  sub new {
-#    my $pkg = shift;
-
-#    my $self = $pkg->generate('CGRBjobs','givans','6Acme7',@_);
-
-#    return $self;
-
-#  }
-
-# sub machAdmin {
-# 	my $self = shift;
-	
-# 	$self->{_machAdmin} ? $self->_get_machAdmin() : $self->_set_machAdmin();
-# }
-
-# sub _set_machAdmin {
-# 	my $self = shift;
-# 	my $admin = CGRB::CGRBAdmin->new();
-# 	$self->{_machAdmin} = $admin->obj_machAdmin();
-# 	$self->machAdmin();
-# }
-
-# sub _get_machAdmin {
-# 	my $self = shift;
-# 	return $self->{_machAdmin};
-# }
-
 sub getNextSlot {
   my $self = shift;
   my $jobType = shift;

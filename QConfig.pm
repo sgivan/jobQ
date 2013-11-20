@@ -21,26 +21,59 @@ sub new {
 
 #  my $obj = bless { pkg => $pkg }, $pkg;
 
-#  my $obj = $pkg->SUPER::generate('CGRBjobs','givans','6Acme7',@_);
   my $obj = $pkg->SUPER::generate('CGRBjobs','QAdmin','qboss',@_);
 
   return $obj;
 }
 
+# Return maximum number of jobs that can run in queue
+# This value represents the maximum number of WWW jobs that can run
+# simultaneously in the infrastructure job queue.
+# Get value from queuing system
+# Currently uses openlava
 sub maxJobs {
-  my $obj = shift;
-  my ($dbh,$sth,$rtn) = ($obj->{_dbh});
+    my $self = shift;
+    my $maxjobs = 25;
+    my $busers = $self->qdirectory() . "/bin/busers";
 
-  $sth = $dbh->prepare("select Value from jobConfig where Property = 'user_maxjobs'");
+#    get output from busers command:
+#    [11/20/13 14:44:32] ircf-login-0-1 bin/$ busers apache
+#    USER/GROUP          JL/P    MAX  NJOBS   PEND    RUN  SSUSP  USUSP    RSV
+#    apache                 -     10      0      0      0      0      0      0
 
-  $rtn = $obj->_dbAction($dbh,$sth,2);
+#   get login name
+#   taken from perldoc -f getlogin
+    my $login = getlogin || getpwuid($<) || "apache";
 
-  if (ref $rtn eq 'ARRAY') {
-    return $rtn->[0]->[0];
-  } else {
-    return 0;
-  }
+    open(BUSERS,"-|","$busers $login") || die "can't  open $busers: $!";
+    my @capture = (<BUSERS>);
+    close(BUSERS) or warn "can't close $busers properly: $!";
 
+    for my $line (@capture) {
+        if ($line =~ /^$login/) {
+            my @vals = split/\s+/,$line;
+
+            $maxjobs = $vals[2] unless ($vals[2] =~ /-/);
+        }
+    }
+
+   return $maxjobs;
+}
+
+sub user_maxJobs {
+    my $self = shift;
+
+    my $dbh = $self->{_dbh};
+    my ($sth,$rtn) = ();
+
+    $sth = $dbh->prepare("select `Value` from jobConfig where `Property` = 'user_maxjobs'");
+    $rtn = $self->_dbAction($dbh,$sth,2);
+    if (ref $rtn eq 'ARRAY') {
+        return $rtn->[0]->[0];
+    } else {
+        #print "\$rtn isa '" . ref($rtn) . "' ('$rtn')\n";
+        return 1;
+    }
 }
 
 sub Q_PID {
@@ -85,3 +118,20 @@ sub _get_Q_PID {
   }
 
 }
+
+sub qbinary {
+    my $self = shift;
+
+    $self->{qbinary} = $self->qdirectory() . "/bin/bsub" unless (exists($self->{qbinary}));
+
+    return $self->{qbinary};
+}
+
+sub qdirectory {
+    my $self = shift;
+
+    $self->{qdirectory} = '/opt/openlava-2.1/' unless (exists($self->{qdirectory}));
+
+    return $self->{qdirectory};
+}
+
