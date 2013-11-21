@@ -8,12 +8,18 @@ use Carp;
 #use lib '/home/cgrb/cgrblib/perl5/perl5.new';
 use CGRB::CGRBjob;
 use CGRB::CGRBAdmin;
+use CGRB::QConfig;
+use autodie;
 use vars qw/ @ISA /;
 
 @ISA = qw/ CGRBjob CGRB::CGRBAdmin /;
 
 my $dbase = 'CGRBjobs';
 my $debug = 0;
+if ($debug) {
+    open(OUT,">>",'/tmp/CGRBmachines.log');
+    print OUT "+" x 50 . "\n" . localtime . "\n\n";
+}
 #print "using CGRBmachines.pm\n" if ($debug);
 1;
 
@@ -68,7 +74,7 @@ sub checkOutNext {
   my $jobType = shift;
   my $dbh = $self->dbh();
   my ($sth,$rtn,$slot);
-  print "CGRBmachines::checkOutNext()\n" if ($debug);
+  print OUT "CGRBmachines::checkOutNext()\n" if ($debug);
   $self->_lockTable('jobSlot write, jobRunMap read, jobMaster read');
 
   $slot = $self->getNextSlot($jobType);
@@ -105,31 +111,43 @@ sub checkIn {
 
 }
 
-
+# Determine how to run jobs on cluster nodes.
+# This should be greatly simplified if we are depending on a cluster queueing system.
 sub machCMD {
-  my $self = shift;
-  my $jobID = shift;
-  my $slot = shift;
-  print "CGRBmachines::machCMD:  jobID = $jobID, slot = $slot\n" if ($debug);
-  my $jobType = $self->jobType($jobID);
-  print "calling machCMD method\n" if ($debug);
-  my $machAdmin = $self->obj_machAdmin();
-  my $master = $machAdmin->slotMaster($slot);
-  print "master: '$master'\n" if ($debug);
-  my $runMethod = $machAdmin->runMethod($master);
-  print "runMethod:  '$runMethod'\n" if ($debug);
-  my $machName = $machAdmin->machName($master);
-  print "machName:  '$machName'\n" if ($debug);
-  my $rawCMD = $self->jobCMD($jobID);
-  print "rawCMD:  '$rawCMD'\n" if ($debug);
-  my $rawARGS = $self->jobArgs($jobID);
-  print "rawARGS: '$rawARGS'\n" if ($debug);
-#  $rawCMD .= " $rawARGS" if ($rawARGS);
-  my $CMD;
-  print "ref \$machAdmin = ", ref $machAdmin, "\n" if ($debug);
+    my $self = shift;
+    my $jobID = shift;
+    my $slot = shift;
+    print OUT "CGRBmachines::machCMD:  jobID = $jobID, slot = $slot\n" if ($debug);
+    my $jobType = $self->jobType($jobID);
+    print OUT "calling machCMD method\n" if ($debug);
+    my $machAdmin = $self->obj_machAdmin();
+    my $master = $machAdmin->slotMaster($slot);
+    print OUT "master: '$master'\n" if ($debug);
+    my $runMethod = $machAdmin->runMethod($master);
+    print OUT "runMethod:  '$runMethod'\n" if ($debug);
+    my $machName = $machAdmin->machName($master);
+    print OUT "machName:  '$machName'\n" if ($debug);
+
+#   jobCMD data comes from jobInfo table
+    my $rawCMD = $self->jobCMD($jobID);
+    print OUT "rawCMD:  '$rawCMD'\n" if ($debug);
+
+#   jobARGS data comes from jobSubmit table
+    my $rawARGS = $self->jobArgs($jobID);
+    print OUT "rawARGS: '$rawARGS'\n" if ($debug);
+
+    my $CMD;
+    print OUT "ref \$machAdmin = ", ref $machAdmin, "\n" if ($debug);
   if ($runMethod) {
-    print "runMethod = '$runMethod'\n" if ($debug);
-    if ($runMethod eq 'rsh') {
+    print OUT "runMethod = '$runMethod'\n" if ($debug);
+    # all jobs on IRCF BioCluster will have runMethod 'qbinary'
+    if ($runMethod eq 'qbinary') {
+        my $qconfig = CGRB::QConfig->new();
+        my $qbinary = $qconfig->qbinary();
+        $CMD = "$qbinary '$rawCMD $rawARGS'";
+#       maybe use -sp argument to adjust job priority
+#       ie, make all www jobs a low priority via -sp 5 flag
+    } elsif ($runMethod eq 'rsh') {
       $rawCMD .= " $rawARGS" if ($rawARGS);
       $rawCMD =~ s/\/data\/www\/html\/temp/\/mnt\/local\/cluster\/www_rslt/g;
       $CMD = "$runMethod $machName $rawCMD";
@@ -235,7 +253,7 @@ sub checkout_machine {
   while (!$slot) {
     ++$cnt;
     if ($cnt > 10) {
-      print LOG "can't checkout slot\n" if ($debug);
+      print OUT "can't checkout slot\n" if ($debug);
       return "can't checkout slot<br>";
     }
     sleep(1);
@@ -244,7 +262,7 @@ sub checkout_machine {
 
   my $machName = $self->obj_machAdmin()->machName($self->obj_machAdmin()->slotMaster($slot));
   $machName = lc($machName);
-  print LOG "using slot # $slot ($machName)\n" if ($debug);
+  print OUT "using slot # $slot ($machName)\n" if ($debug);
   return {name => $machName, slotID => $slot};
 }
 
@@ -254,6 +272,6 @@ sub checkin_machine {
   my $slotID = $params->{slot_id};
   return undef unless ($slotID);
 
-  print LOG "checking in slot $slotID\n" if ($debug);
+  print OUT "checking in slot $slotID\n" if ($debug);
   $self->checkIn($slotID);
 }

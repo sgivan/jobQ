@@ -60,7 +60,7 @@ sub submitJob { ## this should be the method used to submit jobs to the queue
   my ($sth,$jobID,$rtn);
 
   $user = 'anonymous' unless ($user);
-  $submitSRC = 1 unless ($submitSRC);
+  $submitSRC = 'web' unless ($submitSRC);
   $priority = 1 unless ($priority);
  
   if ($debug) {
@@ -86,13 +86,6 @@ sub submitJob { ## this should be the method used to submit jobs to the queue
 	$sth->bind_param(6,$ip_addr);
   $rtn = $obj->_dbAction($dbh,$sth,1);
 
-#   $sth = $dbh->prepare("select max(ID) from jobSubmit");
-
-#   $rtn = $obj->_dbAction($dbh,$sth,2);
-#   if (ref $rtn eq 'ARRAY') {
-#     $jobID = $rtn->[0]->[0];
-#   }
-
   $jobID = $obj->lastJob();
 
   printlog("unlocking tables") if ($debug);
@@ -110,9 +103,12 @@ sub submitJob { ## this should be the method used to submit jobs to the queue
 
 }
 
+# Check to see if there are jobs that have been submitted, but not queued yet.
+# Take these jobs and change their status to "Q" (Queued)
+# Basically, change Submitted jobs to Queued jobs.
 sub jobQ {
   my $obj = shift;
-  my $jobID = shift;
+#  my $jobID = shift;
 #  my $dbh = $obj->{_dbh};
   my $dbh = $obj->dbh();
   my ($sth,$rtn);
@@ -122,7 +118,7 @@ sub jobQ {
     printlog("jobQ was called: $p, $f, $l");
   }
 
-  my $newIDs = $obj->checkSubmit($obj);
+  my $newIDs = $obj->checkSubmit($obj);# number of jobs in 'S' state
 
   if ($newIDs) {
     $sth = $dbh->prepare("insert into jobQueue (`jobID`, `Time`) values (?, now())");
@@ -162,6 +158,32 @@ sub job_deQ {
   }
 }
 
+sub job_delete {
+    my $self = shift;
+    my $jobID = shift;
+    my $dbh = $self->dbh();
+    my ($sth,$rtn) = ();
+
+    $sth = $dbh->prepare("delete from jobSubmit where `ID` = ?");
+    $sth->bind_param(1,$jobID);
+    $rtn = $self->_dbAction($dbh,$sth,4);
+
+    $sth = $dbh->prepare("delete from jobRun where `jobID` = ?");
+    $sth->bind_param(1,$jobID);
+    $rtn = $self->_dbAction($dbh,$sth,4);
+
+    $self->job_deQ($jobID);
+
+#    if (ref $rtn eq 'ARRAY') {
+#        return $rtn->[0]->[0];
+#    } else {
+#        return 0;
+#    }
+    return 1;
+}
+
+# return reference to array containing the job ID's of
+# submitted jobs (ie, jobs that haven't run yet)
 sub checkSubmit {
   my $obj = shift;
 #  my $dbh = $obj->{_dbh};
@@ -258,53 +280,50 @@ sub checkQ {
 
 }
 
+# return number of queued jobs
 sub jobQs {
-  my $obj = shift;
-  my $jobcnt = 0;
-  if ($debug) {
-    my ($p,$f,$l) = caller();
-    printlog("jobQs called: $p, $f, $l");
-  }
+    my $obj = shift;
+    my $jobcnt = 0;
+    if ($debug) {
+        my ($p,$f,$l) = caller();
+        printlog("jobQs called: $p, $f, $l");
+    }
 
-#  my $queuedJobs = $obj->checkQ();
-  my @queuedJobs = $obj->checkQ();
+    my @queuedJobs = $obj->checkQ();
 
-#  foreach my $id (@$queuedJobs) {
-#   foreach my $id (@queuedJobs) {
-#     ++$jobcnt;
-#   }
-	$jobcnt = @queuedJobs;
+    $jobcnt = @queuedJobs;
 
-  printlog("returning '$jobcnt' from jobQs\n\n") if ($debug);
+    printlog("returning '$jobcnt' from jobQs\n\n") if ($debug);
 
-  return $jobcnt;
+    return $jobcnt;
 }
 
+# get job ID and priority from jobQueue
+# returns reference to a 2-element array
 sub getNextJob {
-  my $obj = shift;
-  my $jobID = shift;
-  printlog("retrieving next job") if ($debug);
-#  my $dbh = $obj->{_dbh};
-  my $dbh = $obj->dbh();
-  my ($sth,$rtn,$rslt);
+    my $obj = shift;
+    my $jobID = shift;
+    printlog("retrieving next job") if ($debug);
+    my $dbh = $obj->dbh();
+    my ($sth,$rtn,$rslt);
 
-	if (!$jobID) {
-  	$sth = $dbh->prepare("select Q.jobID, S.Priority from jobQueue Q, jobSubmit S where Q.jobID = S.ID order by S.Priority, Q.jobID");
-  } else {
-  	$sth = $dbh->prepare("select Q.jobID, S.Priority from jobQueue Q, jobSubmit S where Q.jobID = S.ID AND S.ID > ? order by S.Priority, Q.jobID");
-  	$sth->bind_param(1,$jobID);
-  }
-  $rtn = $obj->_dbAction($dbh,$sth,2);
-  if (ref $rtn eq 'ARRAY') {
-    $rslt = $rtn->[0]->[0];
-  }
+    if (!$jobID) {
+        $sth = $dbh->prepare("select Q.jobID, S.Priority from jobQueue Q, jobSubmit S where Q.jobID = S.ID order by S.Priority, Q.jobID");
+    } else {
+        $sth = $dbh->prepare("select Q.jobID, S.Priority from jobQueue Q, jobSubmit S where Q.jobID = S.ID AND S.ID > ? order by S.Priority, Q.jobID");
+        $sth->bind_param(1,$jobID);
+    }
+    $rtn = $obj->_dbAction($dbh,$sth,2);
+    if (ref $rtn eq 'ARRAY') {
+        $rslt = $rtn->[0]->[0];
+    }
 
    if ($rslt) {
-     printlog("next job is '$rslt'") if ($debug);
-     return $rslt;
+        printlog("next job is '$rslt'") if ($debug);
+        return $rslt;
    } else {
-     printlog("can't retrieve next job") if ($debug);
-     return 0;
+        printlog("can't retrieve next job") if ($debug);
+        return 0;
    }
 
 }
@@ -724,22 +743,25 @@ sub joblistActiveByUser {
 	my ($sth,$rtn);
 	return undef unless ($user);
 	
-	$sth = $dbh->prepare("select R.jobID from `jobRun` R, `jobSubmit` S where S.User = ? AND S.ID = R.jobID");
+	#$sth = $dbh->prepare("select R.jobID from `jobRun` R, `jobSubmit` S where S.User = ? AND S.ID = R.jobID");
+	$sth = $dbh->prepare("select ID from `jobSubmit` S where S.User = ? AND S.Status = 'R'");
 	$sth->bind_param(1,$user);
 	
 	$rtn = $self->dbAction($dbh,$sth,2);
+
+    my @jobs = ();
 	if (ref($rtn) eq 'ARRAY') {
 	
-		my @jobs = ();
+		#my @jobs = ();
 		foreach my $row (@$rtn) {
 			push(@jobs,$row->[0]);
 		}
 	
 		return \@jobs;
-	} else {
-		return undef;
-	}
-
+	}# else {
+#		return undef;
+#	}
+    return \@jobs;
 }
 
 sub joblistByType {

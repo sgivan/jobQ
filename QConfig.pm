@@ -9,12 +9,18 @@ use Carp;
 #use lib '/home/cgrb/givans/dev/lib/perl5';
 #use lib '/home/cgrb/cgrblib/perl5/perl5.new';
 use CGRB::CGRBDB;
+use autodie;
 use vars qw/ @ISA /;
 
 @ISA = qw/ CGRBDB /;
 
-1;
+my $debug = 0;
+if ($debug) {
+    open(DEBUG,">>","/tmp/QConfig.log");
+    print DEBUG "+" x 50 . "\n" . localtime . "\n\n";
+}
 
+1;
 
 sub new {
   my $pkg = shift;
@@ -44,10 +50,14 @@ sub maxJobs {
 #   get login name
 #   taken from perldoc -f getlogin
     my $login = getlogin || getpwuid($<) || "apache";
+    print DEBUG "busers command: '$busers $login'\n" if ($debug);
 
-    open(BUSERS,"-|","$busers $login") || die "can't  open $busers: $!";
-    my @capture = (<BUSERS>);
-    close(BUSERS) or warn "can't close $busers properly: $!";
+    #open(BUSERS,"-|","$busers $login") || die "can't  open $busers: $!";
+    open(my $BUSERS,"-|","$busers $login");
+    my @capture = (<$BUSERS>);
+    print DEBUG "captured: '@capture'\n" if ($debug);
+    #close(BUSERS) or warn "can't close $busers properly: $!";
+#    close $BUSERS;
 
     for my $line (@capture) {
         if ($line =~ /^$login/) {
@@ -56,7 +66,7 @@ sub maxJobs {
             $maxjobs = $vals[2] unless ($vals[2] =~ /-/);
         }
     }
-
+    print DEBUG "returning '$maxjobs' from maxJobs()\n" if ($debug);
    return $maxjobs;
 }
 
