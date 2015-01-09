@@ -132,7 +132,8 @@ sub _get_Q_PID {
 sub qbinary {
     my $self = shift;
 
-    $self->{qbinary} = $self->qdirectory() . "/bin/bsub" unless (exists($self->{qbinary}));
+    #$self->{qbinary} = $self->qdirectory() . "/bin/bsub -I " unless (exists($self->{qbinary}));
+    $self->{qbinary} = $self->qdirectory() . "/bin/bsub -q www -I " unless (exists($self->{qbinary}));
 
     return $self->{qbinary};
 }
@@ -140,7 +141,8 @@ sub qbinary {
 sub qdirectory {
     my $self = shift;
 
-    $self->{qdirectory} = '/opt/openlava-2.1/' unless (exists($self->{qdirectory}));
+    #$self->{qdirectory} = '/opt/openlava-2.1/' unless (exists($self->{qdirectory}));
+    $self->{qdirectory} = '/opt/openlava-2.2/' unless (exists($self->{qdirectory}));
 
     return $self->{qdirectory};
 }
