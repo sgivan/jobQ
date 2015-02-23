@@ -1593,27 +1593,23 @@ sub _get_groupBlastPrefs {
   $rtn = $self->dbAction($dbh,$sth,2);
 
   if (ref $rtn eq 'ARRAY') {
-#    return $rtn->[0]->[0];
     
     my $prefstring = $rtn->[0]->[0];
     my $blastprefstring = '';
-    if ($prefstring =~ /blastall\=\"(.+?)\"/) {
-#    	return $1;
-			$blastprefstring = $1;
-		}
-		if ($prefstring =~ /other\=\"(.+?)\"/) {
-			$blastprefstring .= " $1";
-		}
-		
-		if ($blastprefstring =~ /\w+/) {
-			return $blastprefstring;
-    }# else {
-#    	return undef;
-#    }
-    
-  }# else {
-#    return undef;
-#  }
+    if ($prefstring) {
+        if ($prefstring =~ /blastall\=\"(.+?)\"/) {
+                $blastprefstring = $1;
+        }
+        if ($prefstring =~ /other\=\"(.+?)\"/) {
+            $blastprefstring .= " $1";
+        }
+    }
+
+    if ($blastprefstring =~ /\w+/) {
+        return $blastprefstring;
+    }
+
+  }
   return undef;
 }
 
