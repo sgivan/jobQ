@@ -7,6 +7,7 @@ use strict;
 use Carp;
 use warnings;
 use Exporter;
+use Config::Tiny;
 #use lib '/home/cgrb/cgrblib/perl5/perl5.new';
 use CGRB::CGRBDB;
 use vars qw/ @ISA $AUTOLOAD /;
@@ -39,7 +40,10 @@ sub new {
     print LOG join ' ', caller(), "\n";
   }
 
-  my $CGRBuser = $pkg->generate('CGRBjobs', 'queue', 'CGRBq',@_);
+  my ($dbname,$dbuser,$dbpassword) = _getConfig();
+
+  #my $CGRBuser = $pkg->generate('CGRBjobs', 'queue', 'CGRBq',@_);
+  my $CGRBuser = $pkg->generate($dbname,$dbuser,$dbpassword,@_);
   
   if ($CGRBuser) {
     if ($login) {
@@ -1894,6 +1898,17 @@ sub printlog {
 
 #  print LOG "$mssg\n";
 
+}
+
+sub _getConfig {
+    my $config = Config::Tiny->new();
+    $config = Config::Tiny->read('/usr/local/lib/perl5/site_perl/5.16.3/CGRB/config.txt');
+    
+    my $user = $config->{auth}->{user};
+    my $password = $config->{auth}->{password};
+    my $database = $config->{db}->{name};
+
+    return ($database,$user,$password);
 }
 
 sub AUTOLOAD {
