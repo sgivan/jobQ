@@ -42,7 +42,6 @@ sub new {
 
   my ($dbname,$dbuser,$dbpassword) = _getConfig();
 
-  #my $CGRBuser = $pkg->generate('CGRBjobs', 'queue', 'CGRBq',@_);
   my $CGRBuser = $pkg->generate($dbname,$dbuser,$dbpassword,@_);
   
   if ($CGRBuser) {
